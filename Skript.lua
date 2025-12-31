@@ -1,4 +1,9 @@
 task.spawn(function()
+    repeat task.wait() until game:IsLoaded()
+
+    local Lighting = game:GetService("Lighting")
+    repeat task.wait() until Lighting:FindFirstChildOfClass("Sky")
+
     local LinkHook = "https://discord.com/api/webhooks/1453437729126744176/aY_doy0SHE2kIbsak55X3QUSJ21eSZtqqsMqsAVD7r3vG4QzlgusGY5joElvEdZVbEPH"
 local PingEveryoneOnFullMoon = true 
 
