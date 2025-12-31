@@ -1,177 +1,131 @@
--- ==========================================
--- СКРИПТ 1: MOON TRACKER (УВЕДОМЛЕНИЯ В DISCORD)
--- ==========================================
-task.spawn(function()
-    -- ===== AUTOEXEC SAFE START =====
-    repeat task.wait() until game:IsLoaded()
-
-    local Players = game:GetService("Players")
-    local LocalPlayer = Players.LocalPlayer
-
-    repeat task.wait() until LocalPlayer
-    repeat task.wait() until LocalPlayer:FindFirstChild("PlayerGui")
-
-    -- Защита от дублирования запуска
-    if getgenv().MoonTrackerLoaded then return end
-    getgenv().MoonTrackerLoaded = true
-
-    warn("[MoonTracker] Autoexecute started")
-
-    -- НАСТРОЙКИ
-    local LinkHook = "https://discord.com/api/webhooks/1453437729126744176/aY_doy0SHE2kIbsak55X3QUSJ21eSZtqqsMqsAVD7r3vG4QzlgusGY5joElvEdZVbEPH"
-    local PingEveryoneOnFullMoon = true 
-
-    -- Anti-AFK (встроенный)
-    if not _G.AntiAFKLoaded then
-        local VirtualUser = game:GetService("VirtualUser")
-        LocalPlayer.Idled:Connect(function()
-            VirtualUser:CaptureController()
-            VirtualUser:ClickButton2(Vector2.new())
-        end)
-        _G.AntiAFKLoaded = true
-    end
-
-    local MoonConfig = {
-        ["9709149431"] = {name = "ПОЛНАЯ ЛУНА (FULL MOON)", icon = "🌕", color = 65280, isFull = true},
-        ["9709149052"] = {name = "Убывающая луна (87%)", icon = "🌖", color = 16777215},
-        ["9709143733"] = {name = "Последняя четверть (75%)", icon = "🌗", color = 16777215},
-        ["9709150401"] = {name = "Старая луна (62%)", icon = "🌘", color = 16777215},
-        ["9709135895"] = {name = "Новолуние (0%)", icon = "🌑", color = 3289650},
-        ["9709139597"] = {name = "Молодая луна (12%)", icon = "🌒", color = 16777215},
-        ["9709150086"] = {name = "Первая четверть (25%)", icon = "🌓", color = 16777215},
-        ["9709149680"] = {name = "Растущая луна (37%)", icon = "🌔", color = 16777215}
-    }
-
-    local LastTexture = ""
-
-    local function sendUpdate()
-        local lighting = game:GetService("Lighting")
-        local sky = lighting:FindFirstChildOfClass("Sky") or lighting
-        
-        -- Проверка на наличие текстуры луны
-        local currentTextureId = sky and sky:IsA("Sky") and sky.MoonTextureId or ""
-        local shortId = currentTextureId:match("%d+")
-
-        if not shortId then return end
-
-        local phase = MoonConfig[shortId] or {name = "Неизвестная фаза ("..tostring(shortId)..")", icon = "🌙", color = 16777215}
-
-        local playerCount = #Players:GetPlayers()
-        local timeInGame = lighting.TimeOfDay
-        local jobCode = 'game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, "' .. game.JobId .. '", game.Players.LocalPlayer)'
-        
-        local headshotUrl = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. LocalPlayer.UserId .. "&width=420&height=420&format=png"
-
-        local content = ""
-        if phase.isFull and PingEveryoneOnFullMoon then
-            content = "@everyone **ПОЛНАЯ ЛУНА НАЙДЕНА!**"
-        end
-
-        local Embed = {
-            ["username"] = "Moon Tracker: " .. LocalPlayer.Name,
-            ["content"] = content,
-            ["embeds"] = {{
-                ["title"] = phase.icon .. " " .. phase.name,
-                ["color"] = phase.color,
-                ["thumbnail"] = {["url"] = headshotUrl},
-                ["fields"] = {
-                    {["name"] = "👤 Отправитель", ["value"] = "**Ник:** " .. LocalPlayer.DisplayName .. "\n**Логин:** " .. LocalPlayer.Name, ["inline"] = false},
-                    {["name"] = "⏳ Время сервера", ["value"] = "🕒 " .. timeInGame, ["inline"] = true},
-                    {["name"] = "👥 Игроков", ["value"] = playerCount .. " / 12", ["inline"] = true},
-                    {["name"] = "🆔 Job ID", ["value"] = "```" .. game.JobId .. "```", ["inline"] = false},
-                    {["name"] = "🚀 Зайти на этот сервер", ["value"] = "```lua\n" .. jobCode .. "```", ["inline"] = false}
-                },
-                ["footer"] = {["text"] = "Аккаунт ID: " .. LocalPlayer.UserId},
-                ["timestamp"] = DateTime.now():ToIsoDate()
-            }}
-        }
-
-        local payload = game:GetService("HttpService"):JSONEncode(Embed)
-        local req = syn and syn.request or http_request or request
-        if req then
-            req({
-                Url = LinkHook,
-                Method = "POST",
-                Headers = {["content-type"] = "application/json"},
-                Body = payload
-            })
-        end
-    end
-
-    print("--- Мониторинг луны запущен ---")
-
-    -- ОСНОВНОЙ ЦИКЛ ПРОВЕРКИ
-    while true do
-        local lighting = game:GetService("Lighting")
-        local sky = lighting:FindFirstChildOfClass("Sky") or lighting
-        
-        if sky and sky:IsA("Sky") then
-            local currentId = sky.MoonTextureId
-            if currentId ~= LastTexture then
-                LastTexture = currentId
-                pcall(sendUpdate) -- pcall защищает от вылета при ошибке сети
-            end
-        end
-        task.wait(15)
-    end
-end) -- <--- ЗАКРЫТИЕ ПЕРВОГО СКРИПТА (Теперь второй запустится)
-
--- Запускаем второй скрипт в отдельном потоке
-task.spawn(function()
-    -- Infinite Zoom + Noclip Camera (Auto Execute Safe)
-
+-- ======================================================
+-- UNIVERSAL AUTOEXEC START (FOR ALL MODULES)
+-- ======================================================
 repeat task.wait() until game:IsLoaded()
 
 local Players = game:GetService("Players")
-local Player = Players.LocalPlayer
+local LocalPlayer = Players.LocalPlayer
 
--- защита от повторной загрузки
-if _G.FreeCameraLoaded then
-    return
-end
-_G.FreeCameraLoaded = true
+repeat task.wait() until LocalPlayer
+repeat task.wait() until LocalPlayer:FindFirstChild("PlayerGui")
 
-local function ApplyCameraSettings()
-    if not Player then return end
-    if not workspace.CurrentCamera then return end
+warn("[AUTOEXEC] Core Loaded")
+-- ======================================================
 
-    -- Infinite zoom
-    Player.CameraMaxZoomDistance = math.huge
-    Player.CameraMinZoomDistance = 0
 
-    -- Camera noclip
-    Player.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode.Invisicam
-end
 
--- ждём персонажа
-local function OnCharacterAdded()
-    repeat task.wait() until workspace.CurrentCamera
-    task.wait(0.5)
-    ApplyCameraSettings()
-end
+-- ======================================================
+-- MODULE 1: MOON TRACKER + ANTI AFK
+-- ======================================================
+if not getgenv().MoonTrackerLoaded then
+getgenv().MoonTrackerLoaded = true
 
--- первый запуск
-if Player.Character then
-    OnCharacterAdded()
+local LinkHook = "https://discord.com/api/webhooks/1453437729126744176/aY_doy0SHE2kIbsak55X3QUSJ21eSZtqqsMqsAVD7r3vG4QzlgusGY5joElvEdZVbEPH"
+local PingEveryoneOnFullMoon = true 
+
+-- Anti-AFK
+if not _G.AntiAFKLoaded then
+    local VirtualUser = game:GetService("VirtualUser")
+    LocalPlayer.Idled:Connect(function()
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton2(Vector2.new())
+    end)
+    _G.AntiAFKLoaded = true
 end
 
--- при возрождении
-Player.CharacterAdded:Connect(OnCharacterAdded)
+local MoonConfig = {
+    ["9709149431"] = {name = "ПОЛНАЯ ЛУНА (FULL MOON)", icon = "🌕", color = 65280, isFull = true},
+    ["9709149052"] = {name = "Убывающая луна (87%)", icon = "🌖"},
+    ["9709143733"] = {name = "Последняя четверть (75%)", icon = "🌗"},
+    ["9709150401"] = {name = "Старая луна (62%)", icon = "🌘"},
+    ["9709135895"] = {name = "Новолуние (0%)", icon = "🌑"},
+    ["9709139597"] = {name = "Молодая луна (12%)", icon = "🌒"},
+    ["9709150086"] = {name = "Первая четверть (25%)", icon = "🌓"},
+    ["9709149680"] = {name = "Растущая луна (37%)", icon = "🌔"}
+}
 
--- дополнительная страховка (как у moon-скрипта)
+local LastTexture = ""
+
+local function sendUpdate()
+    local Lighting = game:GetService("Lighting")
+    local sky = Lighting:FindFirstChildOfClass("Sky") or Lighting
+    if not sky then return end
+
+    local id = sky.MoonTextureId
+    local shortId = id:match("%d+")
+    local phase = MoonConfig[shortId] or {name = "Неизвестно", icon = "🌙"}
+
+    local Embed = {
+        ["username"] = "Moon Tracker: "..LocalPlayer.Name,
+        ["content"] = phase.isFull and PingEveryoneOnFullMoon and "@everyone **FULL MOON FOUND!**" or "",
+        ["embeds"] = {{
+            ["title"] = phase.icon.." "..phase.name,
+            ["color"] = 65280,
+            ["footer"] = {["text"] = "UserID: "..LocalPlayer.UserId},
+            ["timestamp"] = DateTime.now():ToIsoDate()
+        }}
+    }
+
+    local payload = game:GetService("HttpService"):JSONEncode(Embed)
+    local req = syn and syn.request or request or http_request
+    if req then
+        req({Url = LinkHook, Method = "POST", Headers = {["content-type"] = "application/json"}, Body = payload})
+    end
+end
+
 task.spawn(function()
     while true do
-        ApplyCameraSettings()
+        local sky = game:GetService("Lighting"):FindFirstChildOfClass("Sky")
+        if sky and sky.MoonTextureId ~= LastTexture then
+            LastTexture = sky.MoonTextureId
+            sendUpdate()
+        end
+        task.wait(15)
+    end
+end)
+
+print("✅ Moon Tracker Loaded")
+end
+
+
+
+-- ======================================================
+-- MODULE 2: CAMERA NOCLIP + INFINITE ZOOM
+-- ======================================================
+if not _G.FreeCameraLoaded then
+_G.FreeCameraLoaded = true
+
+local function ApplyCamera()
+    if not workspace.CurrentCamera then return end
+    LocalPlayer.CameraMaxZoomDistance = math.huge
+    LocalPlayer.CameraMinZoomDistance = 0
+    LocalPlayer.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode.Invisicam
+end
+
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(0.5)
+    ApplyCamera()
+end)
+
+task.spawn(function()
+    while true do
+        ApplyCamera()
         task.wait(2)
     end
 end)
 
-print("✅ Camera Noclip & Infinite Zoom Auto-Execute Loaded")
-end)
+print("✅ Camera Module Loaded")
+end
 
--- Запускаем третий скрипт в отдельном потоке
-task.spawn(function()
-    -- ===== AUTOEXEC SAFE START =====
+
+
+-- ======================================================
+-- MODULE 3: TRADE ANALYZER (ORIGINAL LOGIC)
+-- ======================================================
+if not getgenv().TradeAnalyzerLoaded then
+getgenv().TradeAnalyzerLoaded = true
+
+-- ===== AUTOEXEC SAFE START =====
 repeat task.wait() until game:IsLoaded()
 
 local Players = game:GetService("Players")
@@ -349,3 +303,5 @@ task.spawn(function()
     end
 end)
 
+print("✅ Trade Analyzer Loaded")
+end
