@@ -1,13 +1,29 @@
 -- Запускаем первый скрипт в отдельном потоке
 task.spawn(function()
     -- [ВСТАВЬ ТЕКСТ ПЕРВОГО СКРИПТА ТУТ]
+-- ===== AUTOEXEC SAFE START =====
+repeat task.wait() until game:IsLoaded()
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+repeat task.wait() until LocalPlayer
+repeat task.wait() until LocalPlayer:FindFirstChild("PlayerGui")
+
+if getgenv().MoonTrackerLoaded then return end
+getgenv().MoonTrackerLoaded = true
+
+warn("[MoonTracker] Autoexecute started")
+-- =================================
+
+
 local LinkHook = "https://discord.com/api/webhooks/1453437729126744176/aY_doy0SHE2kIbsak55X3QUSJ21eSZtqqsMqsAVD7r3vG4QzlgusGY5joElvEdZVbEPH"
 local PingEveryoneOnFullMoon = true 
 
 -- Anti-AFK
 if not _G.AntiAFKLoaded then
     local VirtualUser = game:GetService("VirtualUser")
-    game:GetService("Players").LocalPlayer.Idled:Connect(function()
+    LocalPlayer.Idled:Connect(function()
         VirtualUser:CaptureController()
         VirtualUser:ClickButton2(Vector2.new())
     end)
@@ -26,21 +42,26 @@ local MoonConfig = {
 }
 
 local LastTexture = ""
-local LocalPlayer = game:GetService("Players").LocalPlayer
 
-function sendUpdate()
+local function sendUpdate()
     local lighting = game:GetService("Lighting")
     local sky = lighting:FindFirstChildOfClass("Sky") or lighting
+    if not sky or not sky:FindFirstChild("MoonTextureId") then return end
+
     local currentTextureId = sky.MoonTextureId
     local shortId = currentTextureId:match("%d+")
-    
-    local phase = MoonConfig[shortId] or {name = "Неизвестная фаза ("..tostring(shortId)..")", icon = "🌙", color = 16777215}
-    local playerCount = #game:GetService("Players"):GetPlayers()
+
+    local phase = MoonConfig[shortId]
+        or {name = "Неизвестная фаза ("..tostring(shortId)..")", icon = "🌙", color = 16777215}
+
+    local playerCount = #Players:GetPlayers()
     local timeInGame = lighting.TimeOfDay
-    local jobCode = 'game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, "' .. game.JobId .. '", game.Players.LocalPlayer)'
-    
-    -- Ссылка на аватарку игрока
-    local headshotUrl = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. LocalPlayer.UserId .. "&width=420&height=420&format=png"
+    local jobCode = 'game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, "' 
+        .. game.JobId .. '", game.Players.LocalPlayer)'
+
+    local headshotUrl =
+        "https://www.roblox.com/headshot-thumbnail/image?userId="
+        .. LocalPlayer.UserId .. "&width=420&height=420&format=png"
 
     local content = ""
     if phase.isFull and PingEveryoneOnFullMoon then
@@ -53,13 +74,16 @@ function sendUpdate()
         ["embeds"] = {{
             ["title"] = phase.icon .. " " .. phase.name,
             ["color"] = phase.color,
-            ["thumbnail"] = {["url"] = headshotUrl}, -- Аватарка справа
+            ["thumbnail"] = {["url"] = headshotUrl},
             ["fields"] = {
-                {["name"] = "👤 Отправитель", ["value"] = "**Ник:** " .. LocalPlayer.DisplayName .. "\n**Логин:** " .. LocalPlayer.Name, ["inline"] = false},
+                {["name"] = "👤 Отправитель", ["value"] =
+                    "**Ник:** " .. LocalPlayer.DisplayName ..
+                    "\n**Логин:** " .. LocalPlayer.Name, ["inline"] = false},
                 {["name"] = "⏳ Время сервера", ["value"] = "🕒 " .. timeInGame, ["inline"] = true},
                 {["name"] = "👥 Игроков", ["value"] = playerCount .. " / 12", ["inline"] = true},
                 {["name"] = "🆔 Job ID", ["value"] = "```" .. game.JobId .. "```", ["inline"] = false},
-                {["name"] = "🚀 Зайти на этот сервер", ["value"] = "```lua\n" .. jobCode .. "```", ["inline"] = false}
+                {["name"] = "🚀 Зайти на этот сервер", ["value"] =
+                    "```lua\n" .. jobCode .. "```", ["inline"] = false}
             },
             ["footer"] = {["text"] = "Аккаунт ID: " .. LocalPlayer.UserId},
             ["timestamp"] = DateTime.now():ToIsoDate()
@@ -69,24 +93,32 @@ function sendUpdate()
     local payload = game:GetService("HttpService"):JSONEncode(Embed)
     local req = syn and syn.request or http_request or request
     if req then
-        req({Url = LinkHook, Method = "POST", Headers = {["content-type"] = "application/json"}, Body = payload})
+        req({
+            Url = LinkHook,
+            Method = "POST",
+            Headers = {["content-type"] = "application/json"},
+            Body = payload
+        })
     end
 end
 
 print("--- Мониторинг запущен для игрока: " .. LocalPlayer.Name .. " ---")
 
+-- ===== ОСНОВНОЙ ЦИКЛ (НЕ ЛОМАЛ) =====
 while true do
-    local sky = game:GetService("Lighting"):FindFirstChildOfClass("Sky") or game:GetService("Lighting")
-    local currentId = sky.MoonTextureId
-    
-    if currentId ~= LastTexture then
-        LastTexture = currentId
-        sendUpdate()
+    local lighting = game:GetService("Lighting")
+    local sky = lighting:FindFirstChildOfClass("Sky") or lighting
+
+    if sky and sky.MoonTextureId then
+        local currentId = sky.MoonTextureId
+        if currentId ~= LastTexture then
+            LastTexture = currentId
+            sendUpdate()
+        end
     end
-    
-    task.wait(15) 
+
+    task.wait(15)
 end
-end)
 
 -- Запускаем второй скрипт в отдельном потоке
 task.spawn(function()
